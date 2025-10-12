@@ -1,0 +1,106 @@
+/* Base */
+:root { --app-maxw: 420px; --space: 12px; --radius: 14px; }
+html, body { background:#f6f8f7; }
+body { margin:0; font-family: Arial, sans-serif; font-size:16px; line-height:1.25; -webkit-text-size-adjust:100%; }
+.app { max-width: var(--app-maxw); margin:0 auto; padding: var(--space); }
+.hidden { display:none; }
+
+/* Botones/inputs */
+button, input, label { font-size:16px; }
+button { padding:10px 12px; border-radius:10px; }
+
+/* Secciones */
+section { background:#fff; border:1px solid #e5e7eb; border-radius: var(--radius);
+  padding: var(--space); margin: var(--space) 0; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+
+/* Topbar */
+.topbar { position: sticky; top: 0; display: grid; grid-template-columns: auto 1fr auto;
+  align-items: center; gap: 8px; padding: 10px 14px; margin: 0 0 10px;
+  background: #2f6b31; color: #fff; border-radius: 10px; }
+.topbar-left { display:flex; gap:6px; align-items:center; }
+.topbar-title { font-size: 1.1rem; margin: 0; text-align:center; }
+.btn-nav { background: transparent; border: none; color: #fff; font-size: 20px; line-height:1; }
+
+/* Online pill */
+.pill { padding: 4px 10px; border-radius: 999px; font-size: 12px; justify-self:end; }
+.pill-online { background: #e8f7e9; color: #2f6b31; border: 1px solid #a6d6a8; }
+
+/* Cards del dashboard */
+.cards { display: grid; gap: 12px; }
+.card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 14px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+.card-grad { background: linear-gradient(180deg, #eaf7eb 0%, #ffffff 100%); border: 1px solid #dbe7dc; }
+.card-title { color: #374151; font-weight: 600; margin-bottom: 4px; }
+.card-value { font-size: 28px; font-weight: 800; color: #1f2937; }
+.alert { background-color: #ffefef; border-color:#ff9a9a; }
+.card canvas { width: 100%; height: auto; display: block; }
+
+/* Drawer */
+.nav-drawer { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); width: min(420px, 90vw);
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,.12);
+  padding: 8px; display: none; z-index: 50; }
+.nav-drawer.open { display: block; }
+.nav-drawer a { display:block; padding:10px 12px; border-radius:8px; color:#2f6b31; text-decoration:none; font-weight:600; }
+.nav-drawer a + a { margin-top: 6px; }
+.nav-drawer a:hover { background:#e8f7e9; }
+.menu-backdrop { position: fixed; inset:0; background: rgba(0,0,0,.25); z-index:40; }
+.menu-backdrop.hidden { display:none; }
+
+@media (min-width: 768px) {
+  #btn-back { display:none; }
+  .nav-drawer { position: static; transform:none; display:flex !important; gap:10px; width:auto; background: transparent; border:0; box-shadow:none; padding:0; }
+  .nav-drawer a { display:inline-block; margin:0; }
+  .menu-backdrop { display:none !important; }
+}
+
+/* Auto por planta (Config) */
+.auto-card { margin-top:12px; padding:12px; border:1px dashed #a6d6a8; border-radius:10px; background:#f6fbf6; }
+.row { display:flex; align-items:center; gap:8px; font-weight:600; color:#2f6b31; }
+.auto-row { margin-top:8px; display:flex; gap:8px; }
+#in-plantName { flex:1; padding:10px; border:1px solid #d1d5db; border-radius:10px; font-size:16px; }
+#btn-apply-suggested { white-space:nowrap; }
+.hint { display:block; margin-top:6px; color:#6b7280; font-size:12px; }
+input[disabled] { background:#f3f4f6; color:#6b7280; }
+.cfg-actions { display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; }
+
+/* ===== Actuadores “acciones rápidas” ===== */
+.quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.quick-card {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 18px 10px; background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.05); transition: background .15s, border-color .15s, box-shadow .15s;
+}
+.quick-card .qc-icon { font-size: 26px; line-height: 1; }
+.quick-card .qc-title { color:#374151; font-weight:600; text-align:center; }
+.quick-card.active { background: #e8f7e9; border-color: #2f6b31; box-shadow: 0 2px 6px rgba(47,107,49,.2); }
+
+/* Estado nivel agua */
+.quick-card.status { align-items: stretch; }
+.progress { height: 14px; background: #e5e7eb; border-radius: 999px; overflow: hidden; margin-top: 6px; }
+.progress .bar { height: 100%; width: 0%; background: #2f6b31; transition: width .25s; }
+.water-meta { display:flex; justify-content: space-between; margin-top: 6px; color:#374151; font-size:14px; }
+
+/* Botón rojo */
+.btn-danger { width: 100%; margin-top: 16px; padding: 14px; background: #e84a43; color: #fff; border: none; border-radius: 16px; font-weight: 800; }
+
+/* Historial */
+#view-history { overflow-x:auto; }
+#hist-table { min-width:380px; width:100%; border-collapse:collapse; }
+#hist-table th, #hist-table td { border:1px solid #ddd; padding:6px 8px; text-align:left; }
+#hist-table th { background:#f5f5f5; font-weight:700; }
+
+/* ===== Alertas en dashboard ===== */
+.alert-wrap { margin: 12px 0 4px; }
+.alert-pill {
+  display:inline-block; background:#d93c3c; color:#fff; font-weight:700;
+  padding:10px 14px; border-radius:16px; box-shadow:0 6px 14px rgba(217,60,60,.25);
+}
+.alert-card {
+  margin-top: -8px; background:#fff; border:1px solid #e5e7eb; border-radius:16px;
+  padding:14px; box-shadow:0 10px 20px rgba(0,0,0,.08);
+}
+.alert-message { margin: 8px 0 10px; color:#374151; }
+.alert-bullets { margin:0; padding-left:18px; }
+.alert-bullets li { margin:4px 0; color:#2f6b31; }
+.alert-actions { display:flex; gap:10px; margin-top:10px; }
+.btn-secondary { background:#fff; border:1px solid #cbd5e1; border-radius:12px; padding:10px 14px; }
+.btn-primary   { background:#2f6b31; color:#fff; border:0; border-radius:12px; padding:10px 14px; }

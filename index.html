@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Invernadero</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="app">
+
+    <!-- Drawer de navegación -->
+    <nav id="nav-drawer" class="nav-drawer">
+      <a href="#dashboard" id="tab-dashboard">Dashboard</a>
+      <a href="#actuators" id="tab-actuators">Actuadores</a>
+      <a href="#history"   id="tab-history">Historial</a>
+      <a href="#config"    id="tab-config">Config</a>
+    </nav>
+    <div id="menu-backdrop" class="menu-backdrop hidden"></div>
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button id="btn-back" class="btn-nav hidden" aria-label="volver">←</button>
+        <button id="btn-menu" class="btn-nav" aria-label="menu" aria-expanded="false" aria-controls="nav-drawer">&#9776;</button>
+      </div>
+      <h2 id="topbar-title" class="topbar-title">Invernadero</h2>
+      <span class="pill pill-online">Online</span>
+    </header>
+
+    <!-- Dashboard -->
+    <section id="view-dashboard">
+      <div class="cards">
+        <div id="card-temp-card" class="card card-grad">
+          <div class="card-title">Temperatura</div>
+          <div class="card-value" id="card-temp-value">--°C</div>
+        </div>
+        <div id="card-hum-card" class="card card-grad">
+          <div class="card-title">Humedad ambiente</div>
+          <div class="card-value" id="card-hum-value">--%</div>
+        </div>
+        <div id="card-humsoil-card" class="card card-grad">
+          <div class="card-title">Humedad de suelo</div>
+          <div class="card-value" id="card-humsoil-value">—%</div>
+        </div>
+      </div>
+
+      <!-- ALERTA -->
+      <div id="alert-container" class="alert-wrap hidden" role="alert" aria-live="polite">
+        <div class="alert-pill" id="alert-pill">Alerta</div>
+        <div class="alert-card">
+          <p id="alert-message" class="alert-message"></p>
+          <ul id="alert-bullets" class="alert-bullets"></ul>
+          <div class="alert-actions">
+            <button id="btn-alert-close" class="btn-secondary" type="button">Cerrar</button>
+            <button id="btn-alert-actions" class="btn-primary" type="button">Abrir Acciones</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Histórico <small>24h</small></div>
+        <canvas id="chart-24h" width="360" height="140"></canvas>
+      </div>
+
+      <div class="card">
+        Última lectura: <span id="last-ts">--:--:--</span>
+      </div>
+    </section>
+
+    <!-- Config -->
+    <section id="view-config" class="hidden">
+      <div><label>Temp máx <input id="in-tempMax" type="number" min="-10" max="60" step="0.1"></label></div>
+      <div><label>Humedad mín <input id="in-humMin" type="number" min="0" max="100" step="1"></label></div>
+      <div><label>Luz mín <input id="in-luxMin" type="number" min="0" max="20000" step="10"></label></div>
+
+      <div class="auto-card">
+        <label class="row">
+          <input id="chk-auto-plant" type="checkbox">
+          <span>Config automática por planta</span>
+        </label>
+        <div class="auto-row">
+          <input id="in-plantName" type="text" placeholder="Ej: Albahaca, Tomate, Menta">
+          <button id="btn-apply-suggested" type="button">Aplicar sugeridos</button>
+        </div>
+        <small class="hint">En automático se bloquean los campos manuales y se completan con valores sugeridos.</small>
+      </div>
+
+      <div class="cfg-actions">
+        <button id="btn-save-thresholds">Guardar</button>
+        <button id="btn-reset-thresholds">Restaurar</button>
+      </div>
+      <div id="msg-config"></div>
+    </section>
+
+    <!-- Actuadores -->
+    <section id="view-actuators" class="hidden">
+      <div class="quick-grid">
+        <button class="quick-card" id="tile-luces" type="button">
+          <div class="qc-icon">💡</div>
+          <div class="qc-title">Encender luces</div>
+        </button>
+
+        <button class="quick-card" id="tile-ventilador" type="button">
+          <div class="qc-icon">🌀</div>
+          <div class="qc-title">Ventilación</div>
+        </button>
+
+        <button class="quick-card" id="tile-bomba" type="button">
+          <div class="qc-icon">💧</div>
+          <div class="qc-title">Activar riego</div>
+        </button>
+
+        <div class="quick-card status" id="card-water">
+          <div class="qc-title"><span class="qc-emoji">🚰</span> <strong>Nivel de agua</strong></div>
+          <div class="progress"><div class="bar" id="water-bar" style="width:62%"></div></div>
+          <div class="water-meta">
+            <span id="water-percent">62%</span>
+            <span id="water-label">Tanque medio</span>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-danger" id="btn-stop-all" type="button">Detener todo</button>
+    </section>
+
+    <!-- Historial -->
+    <section id="view-history" class="hidden">
+      <h2>Historial (últimas 10)</h2>
+      <table id="hist-table"></table>
+      <button id="btn-export-csv">Exportar CSV</button>
+      <button id="btn-export-json">Exportar JSON</button>
+      <button id="btn-clear-history">Borrar</button>
+    </section>
+
+    <!-- Simulación -->
+    <section id="view-sim" class="hidden">
+      <h2>Simulación</h2>
+      <button id="btn-sim-1">Simular 1 lectura</button>
+      <button id="btn-sim-10">Simular 10 lecturas</button>
+      <label style="margin-left:8px;"><input type="checkbox" id="chk-sim-auto"> Auto cada 3s</label>
+    </section>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/thresholds.js"></script>
+  <script src="js/actuators.js"></script>
+  <script src="js/history.js"></script>
+  <script src="js/sensors.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
