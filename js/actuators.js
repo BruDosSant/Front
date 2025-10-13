@@ -32,18 +32,13 @@ function subscribeActuators(cb){
   return () => { const i = listeners.indexOf(cb); if (i>=0) listeners.splice(i,1); };
 }
 
-function computeAuto(reading, thresholds){
-  return {
-    bombaOn:      reading.hum  < thresholds.humMin,
-    ventiladorOn: reading.temp > thresholds.tempMax,
-    lucesOn:      reading.lux  < thresholds.luxMin,
-  };
+function subscribeActuators(cb){
+  listeners.push(cb); cb(getActuators());
+  return () => { const i = listeners.indexOf(cb); if (i>=0) listeners.splice(i,1); };
 }
 
 function applyAuto(reading){
   if (!state) state = loadState();
-  const th = Thresholds.getThresholds();
-  const s = computeAuto(reading, th);
   let changed = false;
   if (state.bomba.mode==="auto" && state.bomba.on !== s.bombaOn) { state.bomba.on = s.bombaOn; changed = true; }
   if (state.ventilador.mode==="auto" && state.ventilador.on !== s.ventiladorOn) { state.ventilador.on = s.ventiladorOn; changed = true; }
@@ -51,4 +46,4 @@ function applyAuto(reading){
   if (changed){ saveState(); notify(); }
 }
 
-window.Actuators = { getActuators, setActuator, subscribeActuators, computeAuto, applyAuto };
+window.Actuators = { getActuators, setActuator, subscribeActuators, applyAuto };

@@ -1,36 +1,41 @@
-const STORAGE_KEY_HISTORY = "gh_history_v1";
-const MAX_HISTORY = 100;
 
-let items = loadHistory();
+const loadHistory = async () => {
+  try {
+    const url = "/lecturas";
+    const response = await fetch(url);
+    const chart = await import("./setupChart/renderChart.js");
+    if (response.ok && chart) {
+      const data = await response.json();
 
-function loadHistory(){
-  const raw = localStorage.getItem(STORAGE_KEY_HISTORY);
-  return raw ? JSON.parse(raw) : [];
+      data.sort((fechaDesde, fechaHasta) => new Date(fechaDesde.fecha_hora) - new Date(fechaHasta.fecha_hora));
+
+      const labels = data.map(d => new Date(d.fecha_hora).toLocaleString());
+      const temperatura = data.map(d => d.temperatura);
+      const humedad = data.map(d => d.humedad);
+      const nivelDeAgua = data.map(d => d.nivel_de_agua);
+
+      chart.renderChart(labels, temperatura, humedad, nivelDeAgua);
+    } else {
+      console.error(response.status);
+    }
+  } catch (ex) {
+    console.error(ex);
+  }
 }
-function saveHistory(){ localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(items)); }
 
-function pushReading(reading){
-  items.push(reading);
-  if (items.length > MAX_HISTORY) items = items.slice(-MAX_HISTORY);
-  saveHistory();
-}
+loadHistory();
 
-function getLast(n=10){
-  return items.slice(-n).reverse();
-}
 
-function clearHistory(){
+function clearHistory() {
   items = []; saveHistory();
 }
 
-function exportCSV(){
+function exportCSV() {
   const header = "ts,temp,hum,lux\n";
   const body = items.map(r => `${r.ts},${r.temp},${r.hum},${r.lux}`).join("\n");
   return header + body + "\n";
 }
 
-function exportJSON(){
+function exportJSON() {
   return JSON.stringify(items, null, 2);
 }
-
-window.History = { pushReading, getLast, clearHistory, exportCSV, exportJSON };

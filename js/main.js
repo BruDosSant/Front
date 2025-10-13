@@ -1,4 +1,8 @@
-let uiThresholds = Thresholds.getThresholds();
+
+/* ===== Estado agua + riego ===== */
+let uiWaterLevelPct = 62;              // porcentaje actual (placeholder)
+let lastIrrigationAt = null;           // timestamp del último encendido de bomba
+let _prevAct = null;
 
 /* ===== Util ===== */
 function formatTime(ms) { return new Date(ms).toLocaleTimeString(); }
@@ -11,8 +15,7 @@ function timeAgo(ts){
 }
 
 /* ===== Backend enchufable (sugeridos) ===== */
-const API_BASE = "";        // ej: "https://mi-api.com"
-const USE_BACKEND = false;
+const API_BASE = "";      
 
 /* ===== Auto por planta: persistencia ===== */
 const AUTO_KEY  = 'autoByPlant';
@@ -23,46 +26,11 @@ function getPlantName(){ return localStorage.getItem(PLANT_KEY) || ''; }
 function setPlantName(name){ localStorage.setItem(PLANT_KEY, String(name||'').trim()); }
 function clearPlantName(){ localStorage.removeItem(PLANT_KEY); }
 
-/* ===== Presets locales (fallback) ===== */
-const PLANT_PRESETS = {
-  'albahaca': { tempMax: 30, humMin: 55, luxMin: 15000 },
-  'tomate':   { tempMax: 28, humMin: 60, luxMin: 18000 },
-  'menta':    { tempMax: 26, humMin: 65, luxMin: 12000 },
-};
-function normalizePlantName(s){
-  return String(s||'').toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,'').trim();
-}
-
-/* ===== Sugeridos ===== */
-async function suggestThresholds(plantName){
-  const name = String(plantName||'').trim();
-  if (!name) return null;
-  if (USE_BACKEND && API_BASE) {
-    try {
-      const url = `${API_BASE}/api/plants/thresholds?name=${encodeURIComponent(name)}`;
-      const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-      if (res.ok) {
-        const data = await res.json(); // { tempMax, humMin, luxMin }
-        if ([data?.tempMax, data?.humMin, data?.luxMin].every(v => typeof v === 'number')) return data;
-      }
-    } catch(e){ console.warn("Backend no disponible, usando presets."); }
-  }
-  const key = normalizePlantName(name);
-  return PLANT_PRESETS[key] || null;
-}
-
-/* ===== Estado agua + riego ===== */
-let uiWaterLevelPct = 62;              // porcentaje actual (placeholder)
-let lastIrrigationAt = null;           // timestamp del último encendido de bomba
-let _prevAct = null;                    // para detectar transición
 
 /* API pública para backend */
 window.setWaterLevel = (pct, label) => {
   renderWaterLevel(pct, label);
   uiWaterLevelPct = Math.max(0, Math.min(100, Number(pct)||0));
-  // recomputar alertas con la última lectura conocida (del historial)
-  const last = History.getLast ? History.getLast(1)[0] : null;
-  if (last) computeAndRenderAlert(last);
 };
 
 /* ===== Dashboard ===== */
@@ -75,14 +43,6 @@ function updateCardsFromReading(reading) {
   const hs = (reading.humSoil != null) ? Number(reading.humSoil).toFixed(0) : "—";
   const elSoil = document.getElementById("card-humsoil-value");
   if (elSoil) elSoil.innerText = `${hs}%`;
-}
-function updateDashboard(reading) {
-  document.getElementById("last-ts").innerText = formatTime(reading.ts);
-  const humCard = document.getElementById("card-hum-card");
-  if (humCard) {
-    if (reading.hum < uiThresholds.humMin) humCard.classList.add("alert");
-    else humCard.classList.remove("alert");
-  }
 }
 
 /* ===== Mini chart 24h ===== */
@@ -119,26 +79,12 @@ function drawLineChart(canvasId, values, options = {}) {
     ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI*2); ctx.fill();
   });
 }
-function getLastHoursSeries(field, hours = 24) {
-  const items = History.getLast(500);
-  const now = Date.now(), from = now - hours*3600*1000;
-  const filtered = items.filter(r => r.ts >= from).sort((a,b)=>a.ts-b.ts);
-  return filtered.map(r => Number(r[field])).filter(v => !isNaN(v));
-}
-function renderDashboardChart24h() {
-  const series = getLastHoursSeries("temp", 24);
-  if (series.length) drawLineChart("chart-24h", series, { color: "#2f6b31" });
-}
 
 /* ===== Historial ===== */
 function renderHistoryTable() {
-  const rows = History.getLast(10);
   const table = document.getElementById("hist-table");
   table.innerHTML =
-    `<tr><th>Hora</th><th>Temp (°C)</th><th>Hum (%)</th><th>Luz (lx)</th></tr>` +
-    rows.map(r =>
-      `<tr><td>${new Date(r.ts).toLocaleTimeString()}</td><td>${r.temp}</td><td>${r.hum}</td><td>${r.lux}</td></tr>`
-    ).join("");
+    `<tr><th>Hora</th><th>Temp (°C)</th><th>Hum (%)</th><th>Luz (lx)</th></tr>`;
 }
 function downloadText(filename, text) {
   const a = document.createElement("a");
@@ -160,7 +106,6 @@ function toggleManualInputs(enabled){
   });
 }
 function fillThresholdForm() {
-  const th = Thresholds.getThresholds();
   const inTemp = document.getElementById("in-tempMax");
   const inHum  = document.getElementById("in-humMin");
   const inLux  = document.getElementById("in-luxMin");
@@ -173,73 +118,16 @@ function fillThresholdForm() {
   if (plantInput) plantInput.value = getPlantName();
   toggleManualInputs(!auto);
 }
-function refreshUIAfterThresholdChange() {
-  uiThresholds = Thresholds.getThresholds();
-  const last = History.getLast ? History.getLast(1)[0] : null;
-  if (last) { updateDashboard(last); computeAndRenderAlert(last); }
-}
-function initConfigView() {
-  const msg = document.getElementById("msg-config");
-  const chk = document.getElementById("chk-auto-plant");
-  const plantInput = document.getElementById("in-plantName");
-  const btnApply = document.getElementById("btn-apply-suggested");
-  const inTemp = document.getElementById("in-tempMax");
-  const inHum  = document.getElementById("in-humMin");
-  const inLux  = document.getElementById("in-luxMin");
 
-  fillThresholdForm();
-
-  if (chk) {
-    chk.onchange = async () => {
-      setAutoByPlant(chk.checked);
-      toggleManualInputs(!chk.checked);
-      if (chk.checked && plantInput?.value) {
-        msg.innerText = "Cargando sugeridos…";
-        const sug = await suggestThresholds(plantInput.value);
-        if (sug) { inTemp.value = sug.tempMax; inHum.value = sug.humMin; inLux.value = sug.luxMin; msg.innerText = "Sugeridos aplicados (sin guardar)."; }
-        else { msg.innerText = "No hay sugeridos para esa planta."; }
-      } else { msg.innerText = ""; }
-    };
-  }
-
-  if (btnApply) {
-    btnApply.onclick = async () => {
-      const name = plantInput?.value || '';
-      setPlantName(name);
-      btnApply.disabled = true;
-      const prev = msg.innerText;
-      msg.innerText = "Cargando sugeridos…";
-      const sug = await suggestThresholds(name);
-      if (sug) { inTemp.value = sug.tempMax; inHum.value = sug.humMin; inLux.value = sug.luxMin; msg.innerText = "Sugeridos aplicados (sin guardar)."; }
-      else { msg.innerText = "No hay sugeridos para esa planta."; }
-      btnApply.disabled = false;
-    };
-  }
 
   document.getElementById("btn-save-thresholds").onclick = () => {
     try {
       setPlantName(plantInput?.value || '');
-      Thresholds.setThresholds({
-        tempMax: Number(inTemp.value),
-        humMin:  Number(inHum.value),
-        luxMin:  Number(inLux.value),
-      });
       msg.innerText = "Guardado ✔";
       refreshUIAfterThresholdChange();
       updateTopbarForView((location.hash || '#dashboard').slice(1));
     } catch (e) { msg.innerText = e.message || "Error al guardar"; }
   };
-
-  document.getElementById("btn-reset-thresholds").onclick = () => {
-    Thresholds.resetThresholds();
-    clearPlantName();
-    setAutoByPlant(false);
-    fillThresholdForm();
-    msg.innerText = "Valores por defecto";
-    refreshUIAfterThresholdChange();
-    updateTopbarForView((location.hash || '#dashboard').slice(1));
-  };
-}
 
 /* ===== Actuadores (UI + transiciones para “último riego”) ===== */
 function renderActuators(state) {
@@ -286,102 +174,12 @@ function renderWaterLevel(level = 62, label = 'Tanque medio') {
   document.getElementById('water-label').textContent = label || '';
 }
 
-/* ===== ALERTAS ===== */
-function showAlert({pill, message, bullets}) {
-  const wrap = document.getElementById('alert-container');
-  document.getElementById('alert-pill').textContent = pill || 'Alerta';
-  document.getElementById('alert-message').textContent = message || '';
-  const ul = document.getElementById('alert-bullets');
-  ul.innerHTML = (bullets||[]).map(text => `<li>${text}</li>`).join('');
-  wrap.classList.remove('hidden');
-}
-function hideAlert(){
-  document.getElementById('alert-container').classList.add('hidden');
-}
-function evaluateStatus(reading){
-  const th = uiThresholds;
-  return {
-    water: (uiWaterLevelPct <= 5) ? 'critical' : (uiWaterLevelPct <= 15 ? 'low' : 'ok'),
-    temp:  (reading.temp > th.tempMax) ? 'high' : 'ok',
-    hum:   (reading.hum  < th.humMin)  ? 'low'  : 'ok',
-    lux:   (reading.lux  < th.luxMin)  ? 'low'  : 'ok',
-  };
-}
-function computeAndRenderAlert(reading){
-  const s = evaluateStatus(reading);
-
-  // Prioridad: agua crítica > temp alta > hum baja > lux baja; si todo OK, oculta
-  if (s.water === 'critical') {
-    const bombaOn = !!Actuators.getActuators().bomba?.on;
-    showAlert({
-      pill: 'Depósito sin agua',
-      message: 'El tanque está al 0–5%. Revisa el depósito.',
-      bullets: [
-        `Nivel actual: ${uiWaterLevelPct}%`,
-        `Bomba: ${bombaOn ? 'encendida' : 'detenida'} (protección)`,
-        `Último riego: ${timeAgo(lastIrrigationAt)}`
-      ]
-    });
-    return;
-  }
-
-  if (s.temp === 'high') {
-    showAlert({
-      pill: 'Temperatura alta',
-      message: `La temperatura superó el máximo (${uiThresholds.tempMax}°C).`,
-      bullets: [
-        `Actual: ${reading.temp}°C`,
-        `Humedad: ${s.hum==='ok' ? 'OK' : 'baja'} (${reading.hum}%)`,
-        `Luz: ${s.lux==='ok' ? 'OK' : 'baja'} (${reading.lux} lx)`
-      ]
-    });
-    return;
-  }
-
-  if (s.hum === 'low') {
-    showAlert({
-      pill: 'Humedad baja',
-      message: `La humedad está por debajo del mínimo (${uiThresholds.humMin}%).`,
-      bullets: [
-        `Actual: ${reading.hum}%`,
-        `Temperatura: ${s.temp==='ok' ? 'OK' : 'alta'} (${reading.temp}°C)`,
-        `Luz: ${s.lux==='ok' ? 'OK' : 'baja'} (${reading.lux} lx)`
-      ]
-    });
-    return;
-  }
-
-  if (s.lux === 'low') {
-    showAlert({
-      pill: 'Luz insuficiente',
-      message: `La luz está por debajo del mínimo (${uiThresholds.luxMin} lx).`,
-      bullets: [
-        `Actual: ${reading.lux} lx`,
-        `Temperatura: ${s.temp==='ok' ? 'OK' : 'alta'} (${reading.temp}°C)`,
-        `Humedad: ${s.hum==='ok' ? 'OK' : 'baja'} (${reading.hum}%)`
-      ]
-    });
-    return;
-  }
-
-  hideAlert(); // nada grave
-}
-function initAlertEvents(){
-  document.getElementById('btn-alert-actions')?.addEventListener('click', () => { location.hash = '#actuators'; });
-  document.getElementById('btn-alert-close')?.addEventListener('click', hideAlert);
-}
 
 /* ===== Sensores ===== */
 function onReading(reading) {
   updateCardsFromReading(reading);
-  updateDashboard(reading);
-  History.pushReading(reading);
   renderHistoryTable();
-  Actuators.applyAuto(reading);
-  renderDashboardChart24h();
-  computeAndRenderAlert(reading);
 }
-function initDashboard() { Sensors.subscribeReadings(onReading); }
 
 /* ===== Menú ===== */
 function initMenu() {
@@ -448,20 +246,6 @@ function initRouter() {
   go();
 }
 
-/* ===== Simulación ===== */
-function rand(n, m) { return +(Math.random() * (m - n) + n).toFixed(1); }
-function fakeReading(i=0) {
-  return { temp: rand(18, 35), hum: rand(25, 70), lux: rand(200, 900), ts: Date.now()+i*60000 };
-}
-let simTimer = null;
-function initSim() {
-  document.getElementById("btn-sim-1").onclick = () => onReading(fakeReading());
-  document.getElementById("btn-sim-10").onclick = () => { for (let i=0;i<10;i++) onReading(fakeReading(i)); };
-  document.getElementById("chk-sim-auto").onchange = (e) => {
-    if (e.target.checked) simTimer = setInterval(() => onReading(fakeReading()), 3000);
-    else { clearInterval(simTimer); simTimer = null; }
-  };
-}
 
 /* ===== Altura móvil ===== */
 function setVhUnit() { const vh = window.innerHeight * 0.01; document.documentElement.style.setProperty('--vh', `${vh}px`); }
@@ -469,15 +253,11 @@ window.addEventListener('resize', setVhUnit); setVhUnit();
 
 /* ===== Arranque ===== */
 function initApp() {
-  initDashboard();
   initActuatorsView();
   initHistoryView();
-  initConfigView();
-  initSim();
   initRouter();
   initMenu();
   initBackButton();
-  initAlertEvents();
   renderWaterLevel(uiWaterLevelPct, 'Tanque medio'); // inicial
 }
 document.addEventListener("DOMContentLoaded", initApp);
