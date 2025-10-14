@@ -25,17 +25,39 @@ const loadHistory = async () => {
 
 loadHistory();
 
-
-function clearHistory() {
-  items = []; saveHistory();
+function saveFile(url, filename) {
+  a.href = url;
+  a.download = filename || "file-name";
+  document.body.appendChild(a);
+  document.body.removeChild(a);
 }
 
-function exportCSV() {
-  const header = "ts,temp,hum,lux\n";
-  const body = items.map(r => `${r.ts},${r.temp},${r.hum},${r.lux}`).join("\n");
-  return header + body + "\n";
+async function exportCSVbyDates(dateFrom, dateUntil) {
+  try {
+    const url = "/csv?dateFrom=" + dateFrom + "&dateUntil=" + dateUntil;
+    const response = await fetch(url);
+    if (response.ok) {
+      const blob = await response.blob();
+      console.log("blob: ", blob);
+      const downloadUrl = URL.createObjectURL(blob);
+      console.log("downloadUrl: ", downloadUrl);
+      
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = `export_${dateFrom}_to_${dateUntil}.csv`; 
+      console.log("a: ", a);
+      
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      URL.revokeObjectURL(downloadUrl);
+    } else {
+      console.error(response.status);
+    }
+  } catch (ex) {
+    console.error(ex);
+  }
 }
 
-function exportJSON() {
-  return JSON.stringify(items, null, 2);
-}
+exportCSVbyDates();
