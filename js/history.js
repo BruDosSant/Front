@@ -60,4 +60,4 @@ async function exportCSVbyDates(dateFrom, dateUntil) {
   }
 }
 
-exportCSVbyDates();
+//exportCSVbyDates();

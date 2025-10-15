@@ -86,17 +86,6 @@ function renderHistoryTable() {
   table.innerHTML =
     `<tr><th>Hora</th><th>Temp (°C)</th><th>Hum (%)</th><th>Luz (lx)</th></tr>`;
 }
-function downloadText(filename, text) {
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
-  a.download = filename; a.click(); URL.revokeObjectURL(a.href);
-}
-function initHistoryView() {
-  document.getElementById("btn-export-csv").onclick  = () => downloadText("data.csv",  History.exportCSV());
-  document.getElementById("btn-export-json").onclick = () => downloadText("data.json", History.exportJSON());
-  document.getElementById("btn-clear-history").onclick = () => { History.clearHistory(); renderHistoryTable(); };
-  renderHistoryTable();
-}
 
 /* ===== Config ===== */
 function toggleManualInputs(enabled){
@@ -129,21 +118,7 @@ function fillThresholdForm() {
     } catch (e) { msg.innerText = e.message || "Error al guardar"; }
   };
 
-/* ===== Actuadores (UI + transiciones para “último riego”) ===== */
-function renderActuators(state) {
-  const s = state || {};
-  const lucesOn  = !!(s.luces && s.luces.on);
-  const ventOn   = !!(s.ventilador && s.ventilador.on);
-  const bombaOn  = !!(s.bomba && s.bomba.on);
 
-  document.getElementById('tile-luces')?.classList.toggle('active', lucesOn);
-  document.getElementById('tile-ventilador')?.classList.toggle('active', ventOn);
-  document.getElementById('tile-bomba')?.classList.toggle('active', bombaOn);
-
-  // detectar encendido de bomba -> registrar "último riego"
-  if (_prevAct && !_prevAct.bombaOn && bombaOn) lastIrrigationAt = Date.now();
-  _prevAct = { bombaOn };
-}
 function bindActuatorEvents() {
   const tiles = [
     { id:'tile-luces',      key:'luces' },
@@ -161,7 +136,6 @@ function bindActuatorEvents() {
   });
 }
 function initActuatorsView() {
-  renderActuators(Actuators.getActuators());
   Actuators.subscribeActuators(renderActuators);
   bindActuatorEvents();
 }
@@ -254,7 +228,6 @@ window.addEventListener('resize', setVhUnit); setVhUnit();
 /* ===== Arranque ===== */
 function initApp() {
   initActuatorsView();
-  initHistoryView();
   initRouter();
   initMenu();
   initBackButton();
